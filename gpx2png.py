@@ -4,6 +4,7 @@
 # http://johndrinkwater.name/code/gpx2png/
 
 import math
+from xml.dom.minidom import parse
 
 # defaults
 ofilename = "map.png"
@@ -72,12 +73,12 @@ class Tile:
 	def getTileURL( xtile, ytile, zoom ):
 		return '/'.join( [tileserver, str(zoom), str(xtile), str(ytile)] ) + '.png'
 
-#	@staticmethod
-#	def quickTest( tiles ):
-#
-#		for x in range(tiles['x']['min'],tiles['x']['min'] + tiles['x']['count'] + 1):
-#			for y in range(tiles['y']['min'],tiles['y']['min'] + tiles['y']['count'] + 1):
-#				print Tile.getTileURL( x, y, tiles['zoom'] )
+	# TODO Remove this, testing 
+	@staticmethod
+	def quickTest( tiles ):
+		for x in range(tiles['x']['min'],tiles['x']['min'] + tiles['x']['count'] + 1):
+			for y in range(tiles['y']['min'],tiles['y']['min'] + tiles['y']['count'] + 1):
+				print Tile.getTileURL( x, y, tiles['zoom'] )
 
 	# returns tile bounding box for the points at this zoom level
 	# Be cautious, as this can produce a lot of tiles
@@ -88,6 +89,8 @@ class Tile:
 		tilexmin = tileymin = 200000
 		tilexmax = tileymax = 0
 		
+		# TODO could we do odds/evens to lighten this load?
+		
 		for point in points:
 			[xtile, ytile] = Tile.getNumber( point[0], point[1], zoom )
 			tilexmin = min(xtile, tilexmin)
@@ -97,8 +100,8 @@ class Tile:
 
 		# TODO possibly expand here wrt image ‘border’
 
-		return {'x': { 'min':tilexmin - 1, 'max':tilexmax + 1, 'count': tilexmax - tilexmin + 3},
-				'y': { 'min':tileymin - 1, 'max':tileymax + 1, 'count': tileymax - tileymin + 3},
+		return {'x': { 'min':tilexmin - 1, 'max':tilexmax + 1, 'count': tilexmax - tilexmin + 2},
+				'y': { 'min':tileymin - 1, 'max':tileymax + 1, 'count': tileymax - tileymin + 2},
 				'zoom': zoom }
 
 	# returns tile bounding box that is automatically scaled to a correct zoom level.
@@ -119,11 +122,30 @@ class Tile:
 		# get the re-scaled tiles
 		return Tile.calculateTiles( points, zoomdefault )
 
+# GPX helper class, for singular files
+class GPX:
+	points = []
 
-# TODO read file
+	def load(self, dom):
+		# we're going to be ignorant of anything but trkpt for now
+		# TODO support waypoints, track segments
+		trackPoints = dom.getElementsByTagName('trkpt')
+		self.points = map( lambda x: [float(x.getAttribute('lat')), float(x.getAttribute('lon'))], trackPoints)
+	
+	def loadFromFile(self, file):
+		dom = parse(file)
+		self.load(dom)
+	
+	def loadFromString(self, string):
+		dom = parseString(string)
+		self.load(dom)
+
 
 # Just test data for now
-tiles = Tile.calculateTilesAuto( [[51.937697,-1.983817],
-	[51.947704,-1.973797],
-	[51.997670,-1.923847]] )
+track = GPX()
+track.loadFromFile('winchcombe.gpx')
+print track
 
+tiles = Tile.calculateTilesAuto( track.points )
+
+Tile.quickTest( tiles )
