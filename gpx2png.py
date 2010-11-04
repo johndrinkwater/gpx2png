@@ -3,7 +3,9 @@
 # GPLv3, John Drinkwater <john@nextraweb.com>
 # http://johndrinkwater.name/code/gpx2png/
 
+import Image, ImageDraw
 import math
+import urllib
 from xml.dom.minidom import parse
 
 # defaults
@@ -99,9 +101,10 @@ class Tile:
 			tileymax = max(ytile, tileymax)
 
 		# TODO possibly expand here wrt image ‘border’
+		expand = 1
 
-		return {'x': { 'min':tilexmin - 1, 'max':tilexmax + 1, 'count': tilexmax - tilexmin + 2},
-				'y': { 'min':tileymin - 1, 'max':tileymax + 1, 'count': tileymax - tileymin + 2},
+		return {'x': { 'min':tilexmin - expand, 'max':tilexmax + expand, 'count': tilexmax - tilexmin + 2 * expand },
+				'y': { 'min':tileymin - expand, 'max':tileymax + expand, 'count': tileymax - tileymin + 2 * expand },
 				'zoom': zoom }
 
 	# returns tile bounding box that is automatically scaled to a correct zoom level.
@@ -122,9 +125,31 @@ class Tile:
 		# get the re-scaled tiles
 		return Tile.calculateTiles( points, zoomdefault )
 
+	@staticmethod
+	def	populateBackground( tiles, image ):
+		rootx = tiles['x']['min']
+		rooty = tiles['y']['min']
+		for x in range(tiles['x']['min'],tiles['x']['min'] + tiles['x']['count'] + 1):
+			for y in range(tiles['y']['min'],tiles['y']['min'] + tiles['y']['count'] + 1):
+				fromx = rootx - x
+				fromy = rooty - y
+				temptilename = '-'.join( ['cache', str(zoom), str(x), str(y) ] ) + '.png' 
+				urllib.urlretrieve( Tile.getTileURL( x, y, tiles['zoom'] ), 
+					temptilename )
+				tile = Image.open( temptilename )
+				image.paste( tile, (256*rootx, 256*rooty ))
+
+		return image
+				
+
+		
+
 # GPX helper class, for singular files
 class GPX:
 	points = []
+	tiles = []
+	bounds = [(),()]
+	delta = [0,0]
 
 	def load(self, dom):
 		# we're going to be ignorant of anything but trkpt for now
@@ -140,12 +165,55 @@ class GPX:
 		dom = parseString(string)
 		self.load(dom)
 
+	def computeBounds(self):
+		# here we use self.points and get the area of the drawing
+		# (tiles), and figure out the lat/long bounds
+		# then we return
+		self.tiles = Tile.calculateTilesAuto( self.points )
+
+		self.bounds[0] = Tile.getCoords( self.tiles['x']['min'], self.tiles['y']['min'], self.tiles['zoom'] )
+		# because tile coords are from top left
+		self.bounds[1] = Tile.getCoords( self.tiles['x']['max']+1, self.tiles['y']['max']+1, self.tiles['zoom']  )		
+		
+		# long
+		self.delta[0] = self.bounds[0][0] - self.bounds[1][0]
+		self.delta[1] = self.bounds[0][1] - self.bounds[1][1]
+
+	def drawTrack(self, filename):
+		# write track out to this filename
+
+		imagesize = ( self.tiles['x']['count'] * 256, self.tiles['y']['count'] * 256 )
+		print imagesize
+
+		image = Image.new("RGB", imagesize, '#ffffff')
+
+		# this will write the tiles into the image..
+		Tile.populateBackground(self.tiles, image)
+
+		# draw = ImageDraw.Draw(image)
+		image.save('outputimage.png', "PNG")
+
+		# fetch tiles (from cache or not)
+		
+		# create background of tiles
+
+		# draw track (skewing it to the projection)
+
+		# trim image by tile - border
+
+		# write file 
+
+		pass
 
 # Just test data for now
 track = GPX()
 track.loadFromFile('winchcombe.gpx')
-print track
 
-tiles = Tile.calculateTilesAuto( track.points )
+# push this into loading, obviously
+track.computeBounds()
+track.drawTrack('temp')
 
-Tile.quickTest( tiles )
+print track.bounds
+print track.delta
+# XXX HACK
+# Tile.quickTest( track.tiles )
