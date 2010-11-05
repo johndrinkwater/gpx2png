@@ -5,6 +5,7 @@
 
 import Image, ImageDraw
 import math
+import os
 import urllib
 from xml.dom.minidom import parse
 
@@ -75,13 +76,6 @@ class Tile:
 	def getTileURL( xtile, ytile, zoom ):
 		return '/'.join( [tileserver, str(zoom), str(xtile), str(ytile)] ) + '.png'
 
-	# TODO Remove this, testing 
-	@staticmethod
-	def quickTest( tiles ):
-		for x in range(tiles['x']['min'],tiles['x']['min'] + tiles['x']['count'] + 1):
-			for y in range(tiles['y']['min'],tiles['y']['min'] + tiles['y']['count'] + 1):
-				print Tile.getTileURL( x, y, tiles['zoom'] )
-
 	# returns tile bounding box for the points at this zoom level
 	# Be cautious, as this can produce a lot of tiles
 	# The BB is +1 in all directions so we can trim the image later ()
@@ -103,8 +97,8 @@ class Tile:
 		# TODO possibly expand here wrt image ‘border’
 		expand = 1
 
-		return {'x': { 'min':tilexmin - expand, 'max':tilexmax + expand, 'count': tilexmax - tilexmin + 2 * expand },
-				'y': { 'min':tileymin - expand, 'max':tileymax + expand, 'count': tileymax - tileymin + 2 * expand },
+		return {'x': { 'min':tilexmin - expand, 'max':tilexmax + 1+expand, 'count': tilexmax - tilexmin +1 + 2 * expand },
+				'y': { 'min':tileymin - expand, 'max':tileymax + 1+expand, 'count': tileymax - tileymin +1 + 2 * expand },
 				'zoom': zoom }
 
 	# returns tile bounding box that is automatically scaled to a correct zoom level.
@@ -117,7 +111,7 @@ class Tile:
 		# get the default scale tiles
 		tiles = Tile.calculateTiles( points, zoomdefault )
 
-		while ( (tiles['x']['count']+1) * (tiles['y']['count']+1) > (osize * osize) ):
+		while ( (tiles['x']['count']) * (tiles['y']['count']) > (osize+1 * osize+1) ):
 			zoomdefault -= 1
 			tiles['x']['count'] >>= 1
 			tiles['y']['count'] >>= 1
@@ -131,13 +125,17 @@ class Tile:
 		rooty = tiles['y']['min']
 		for x in range(tiles['x']['min'],tiles['x']['min'] + tiles['x']['count'] + 1):
 			for y in range(tiles['y']['min'],tiles['y']['min'] + tiles['y']['count'] + 1):
-				fromx = rootx - x
-				fromy = rooty - y
+				fromx = abs(rootx - x)
+				fromy = abs(rooty - y)
 				temptilename = '-'.join( ['cache', str(zoom), str(x), str(y) ] ) + '.png' 
-				urllib.urlretrieve( Tile.getTileURL( x, y, tiles['zoom'] ), 
-					temptilename )
+				if not os.path.isfile( temptilename ):
+					urllib.urlretrieve( Tile.getTileURL( x, y, tiles['zoom'] ), 
+						temptilename )
+
 				tile = Image.open( temptilename )
-				image.paste( tile, (256*rootx, 256*rooty ))
+				print 256*fromx
+				print 256*fromy
+				image.paste( tile, (256*fromx, 256*fromy ))
 
 		return image
 				
@@ -175,10 +173,6 @@ class GPX:
 		# because tile coords are from top left
 		self.bounds[1] = Tile.getCoords( self.tiles['x']['max']+1, self.tiles['y']['max']+1, self.tiles['zoom']  )		
 		
-		# long
-		self.delta[0] = self.bounds[0][0] - self.bounds[1][0]
-		self.delta[1] = self.bounds[0][1] - self.bounds[1][1]
-
 	def drawTrack(self, filename):
 		# write track out to this filename
 
@@ -188,7 +182,7 @@ class GPX:
 		image = Image.new("RGB", imagesize, '#ffffff')
 
 		# this will write the tiles into the image..
-		Tile.populateBackground(self.tiles, image)
+		image = Tile.populateBackground(self.tiles, image)
 
 		# draw = ImageDraw.Draw(image)
 		image.save('outputimage.png', "PNG")
@@ -207,7 +201,8 @@ class GPX:
 
 # Just test data for now
 track = GPX()
-track.loadFromFile('winchcombe.gpx')
+# track.loadFromFile('winchcombe.gpx')
+track.loadFromFile('2010-07-12_12-18-49.gpx')
 
 # push this into loading, obviously
 track.computeBounds()
@@ -215,5 +210,3 @@ track.drawTrack('temp')
 
 print track.bounds
 print track.delta
-# XXX HACK
-# Tile.quickTest( track.tiles )
