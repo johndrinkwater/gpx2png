@@ -120,6 +120,18 @@ class Tile:
 		return Tile.calculateTiles( points, zoomdefault )
 
 	@staticmethod
+	def	getPixelForCoord( point, bounds, tiles ):
+
+		# return pixel coordinate in image of 
+
+		#tile = Tile.getNumber( point[0], point[1], tiles['zoom'] )
+		#offsetx = tile[0] - tiles['x']['min']
+		#offsety = tile[1] - tiles['y']['min']
+		#print offsetx, offsety
+		return [1,1]
+		pass
+
+	@staticmethod
 	def	populateBackground( tiles, image ):
 		rootx = tiles['x']['min']
 		rooty = tiles['y']['min']
@@ -127,18 +139,17 @@ class Tile:
 			for y in range(tiles['y']['min'],tiles['y']['min'] + tiles['y']['count'] + 1):
 				fromx = abs(rootx - x)
 				fromy = abs(rooty - y)
+				# TODO pick a better location to cache tiles
 				temptilename = '-'.join( ['cache', str(zoom), str(x), str(y) ] ) + '.png' 
 				if not os.path.isfile( temptilename ):
+					print 'Fetching tile…'
 					urllib.urlretrieve( Tile.getTileURL( x, y, tiles['zoom'] ), 
 						temptilename )
 
 				tile = Image.open( temptilename )
-				print 256*fromx
-				print 256*fromy
 				image.paste( tile, (256*fromx, 256*fromy ))
 
 		return image
-				
 
 		
 
@@ -184,29 +195,30 @@ class GPX:
 		# this will write the tiles into the image..
 		image = Tile.populateBackground(self.tiles, image)
 
-		# draw = ImageDraw.Draw(image)
-		image.save('outputimage.png', "PNG")
-
-		# fetch tiles (from cache or not)
-		
-		# create background of tiles
-
 		# draw track (skewing it to the projection)
+		draw = ImageDraw.Draw(image)
+
+		# compute pixel locations
+		pointlist = map( lambda x: Tile.getPixelForCoord(x, self.bounds, self.tiles), self.points)
+
+		# draw
 
 		# trim image by tile - border
+		# atm, its ½ tile wide..
+		trim = int(256/2)
+		image = image.crop( tuple( [trim, trim] + map( lambda x: x-trim, image.size) ) )
 
 		# write file 
+		image.save('outputimage.png', "PNG")
 
 		pass
 
 # Just test data for now
 track = GPX()
-# track.loadFromFile('winchcombe.gpx')
-track.loadFromFile('2010-07-12_12-18-49.gpx')
+track.loadFromFile('winchcombe.gpx')
+# track.loadFromFile('2010-07-12_12-18-49.gpx')
 
 # push this into loading, obviously
 track.computeBounds()
 track.drawTrack('temp')
 
-print track.bounds
-print track.delta
