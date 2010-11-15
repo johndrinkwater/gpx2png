@@ -1,19 +1,20 @@
 #! /usr/bin/python
 # -*- coding: utf-8 -*-
-# GPLv3, John Drinkwater <john@nextraweb.com>
-# http://johndrinkwater.name/code/gpx2png/
+"""
+ GPLv3, John Drinkwater <john@nextraweb.com>
+ http://johndrinkwater.name/code/gpx2png/
+
+"""
 
 import Image, ImageDraw
 import math
 import os
 import urllib
 from xml.dom.minidom import parse
+from optparse import OptionParser
 
 # defaults
-verbose = True
-
-# px border around track
-border = 50
+verbose = False
 
 # need to include CC notice if we use tiles
 cnotice = "CC BY-SA OpenStreetMap"
@@ -23,9 +24,8 @@ cnotice = "CC BY-SA OpenStreetMap"
 # TODO options for tiles renderer
 
 # variables
-version = 0.01
+__version__ = 0.50
 
-# TODO if verbose, output parsed options
 # XXX we are just using defaults now
 
 # Static methods for tile maths
@@ -97,7 +97,7 @@ class Tile:
 		return (int((bounds[0][1] - point[1] ) / bounds[2][1] * imagesize[0]) ,
 				int((bounds[0][0] - point[0] ) / bounds[2][0] * imagesize[1]))
 
-	# TODO fetch more bordering tiles than we need, so we can better fit out image!
+	# TODO fetch more bordering tiles than we need, so we can better fit our image!
 	@staticmethod
 	def populateBackground( server, cachelocation, tiles, image ):
 		global verbose
@@ -116,11 +116,11 @@ class Tile:
 				temptilename = '-'.join( [zoom, str(x), str(y) ] ) + '.png'
 				temptilename = os.path.join(cachelocation, temptilename)
 				# TODO thread this?
+				# TODO also support it failing
 				if not os.path.isfile( temptilename ):
 					if verbose:
-						print 'Fetching tile ' , x, '×', y, '…'
-					urllib.urlretrieve( Tile.getTileURL( server, x, y, zoom ),
-						temptilename )
+						print 'Fetching tile' , x, '×', y, '…'
+					urllib.urlretrieve( Tile.getTileURL( server, x, y, zoom ), temptilename )
 
 				tile = Image.open( temptilename )
 				image.paste( tile, (256*fromx, 256*fromy ))
@@ -225,7 +225,7 @@ class GPX:
 		if verbose:
 			print 'GPX.drawTrack()'
 
-		if filename == '':
+		if filename == '' or filename == None:
 			filename = self.options.get('filename')
 
 		imagesize = ( self.tiles['x']['count'] * 256, self.tiles['y']['count'] * 256 )
@@ -280,11 +280,26 @@ class GPX:
 		# write file 
 		image.save(filename, "PNG")
 
-# Just test data for now
-track = GPX()
-#track.setOptions({'size': 2, 'filename': '2010-07-12_12-18-49.png' })
-#track.loadFromFile('2010-07-12_12-18-49.gpx')
-track.setOptions({'size': 3, 'filename': 'winchcombe.png', 'background': False })
-track.loadFromFile('winchcombe.gpx')
-track.drawTrack()
+if __name__ == "__main__":
+
+	# Now support CLI arguments!
+	parser = OptionParser(usage="usage: gpx2png.py [options] file.gpx")
+	parser.add_option("-v", "--verbose",
+					  action="store_true", dest="verbose", default=False,
+					  help="output progress messages to stdout")
+	parser.add_option("-o", "--output",
+					  action="store", dest="filename", default='',
+					  help="filename to write the track image to")
+
+
+	(options, args) = parser.parse_args()
+	verbose = options.verbose
+	if verbose:
+		print 'Supplied arguments', options, args
+
+	track = GPX()
+	track.setOptions( options.__dict__ )
+	# TODO Support more than one file in the same image 
+	track.loadFromFile( args[0] )
+	track.drawTrack()
 
