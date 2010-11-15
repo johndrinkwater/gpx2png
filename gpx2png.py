@@ -46,8 +46,7 @@ version = 0.01
 
 # XXX we are just using defaults now
 
-#### Helper classes here
-
+# Static methods for tile maths
 class Tile:
 
 	# Returns an OSM tile coordinate for the lat, long provided
@@ -106,13 +105,13 @@ class Tile:
 		return Tile.calculateTiles( bounds, zoomdefault )
 
 	@staticmethod
-	def	getPixelForCoord( point, bounds, imagesize ):
+	def getPixelForCoord( point, bounds, imagesize ):
 		return (int((bounds[0][1] - point[1] ) / bounds[2][1] * imagesize[0]) ,
 				int((bounds[0][0] - point[0] ) / bounds[2][0] * imagesize[1]))
 
 	# TODO fetch more bordering tiles than we need, so we can better fit out image!
 	@staticmethod
-	def	populateBackground( server, style, tiles, image ):
+	def populateBackground( server, style, tiles, image ):
 		rootx = tiles['x']['min']
 		rooty = tiles['y']['min']
 		zoom = str(tiles['zoom'])
@@ -137,7 +136,7 @@ class Tile:
 
 		return image
 
-		
+
 
 # GPX helper class, for singular files
 class GPX:
@@ -172,11 +171,11 @@ class GPX:
 		trackPoints = dom.getElementsByTagName('trkpt')
 		self.points = map( lambda x: [float(x.getAttribute('lat')), float(x.getAttribute('lon'))], trackPoints)
 		self.computeBounds()
-	
+
 	def loadFromFile(self, file):
 		dom = parse(file)
 		self.load(dom)
-	
+
 	def loadFromString(self, string):
 		dom = parseString(string)
 		self.load(dom)
@@ -187,7 +186,7 @@ class GPX:
 
 		latmin = longmin = 200000
 		latmax = longmax = -200000
-		
+
 		for point in self.points:
 			latmin = min(point[0], latmin)
 			latmax = max(point[0], latmax)
@@ -263,9 +262,9 @@ class GPX:
 
 # Just test data for now
 track = GPX()
-#track.setOptions({'size': 3, 'filename': '2010-07-12_12-18-49.png' })
-#track.loadFromFile('2010-07-12_12-18-49.gpx')
-track.setOptions({'size': 3, 'filename': 'winchcombe.png', 'renderer': 'cyclemap' })
-track.loadFromFile('winchcombe.gpx')
+track.setOptions({'size': 2, 'filename': '2010-07-12_12-18-49.png' })
+track.loadFromFile('2010-07-12_12-18-49.gpx')
+#track.setOptions({'size': 3, 'filename': 'winchcombe.png' })
+#track.loadFromFile('winchcombe.gpx')
 track.drawTrack()
 
