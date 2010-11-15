@@ -159,6 +159,7 @@ class GPX:
 		'filename': 'output.png', # Default output filename if not provided
 		'renderer': 'mapnik', # OSM server to use
 		'cache': 'cache', # Default cache location
+		'notice': 'small'
 		}
 
 	def __init__( self ):
@@ -289,6 +290,27 @@ class GPX:
 
 		#trim = int(256/2)
 		#image = image.crop( tuple( [trim, trim] + map( lambda x: x-trim, image.size) ) )
+
+		# Draw CC licence image
+		ccimage = 'cc-by-sa.' + self.options.get('notice') + '.png'
+		# TODO fail if image is missing
+		cclogo = Image.open(ccimage)
+		cclocation = {
+			'small': (85,20),  # small 80 × 15
+			'normal': (93,36), # normal 88 × 31
+		}.get( self.options.get('notice'), (85,20) )
+		cclocation = (image.size[0] - cclocation[0], image.size[1] - cclocation[1] )
+		image.paste(cclogo, cclocation, cclogo)
+		# Draw OSM logo
+		osmlogo = Image.open('osm.png')
+		osmlogosize = {
+			'small': 16,  # small 80 × 15
+			'normal': 32, # normal 88 × 31
+		}.get( self.options.get('notice'), 32 )
+		osmlogo = osmlogo.resize( (osmlogosize,osmlogosize), Image.ANTIALIAS)
+		osmlocation = (cclocation[0] - osmlogosize - 5, cclocation[1])
+		image.paste(osmlogo, osmlocation, osmlogo)
+
 
 		# write file 
 		image.save(filename, "PNG")
