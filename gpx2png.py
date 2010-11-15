@@ -155,7 +155,7 @@ class GPX:
 		'filename': 'output.png', # Default output filename if not provided
 		'renderer': 'mapnik', # OSM server to use
 		'cache': 'cache', # Default cache location
-		'notice': 'small'
+		'notice': 'normal'
 		}
 
 	def __init__( self ):
@@ -325,8 +325,6 @@ if __name__ == "__main__":
 
 	(options, args) = parser.parse_args()
 	verbose = options.verbose
-	if verbose:
-		print 'Supplied arguments', options, args
 
 	track = GPX()
 	track.setOptions( options.__dict__ )
