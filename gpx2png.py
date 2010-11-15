@@ -81,55 +81,41 @@ class Tile:
 		return '/'.join( [tileserver, str(zoom), str(xtile), str(ytile)] ) + '.png'
 
 	# returns tile bounding box for the points at this zoom level
-	# Be cautious, as this can produce a lot of tiles
-	# The BB is +1 in all directions so we can trim the image later ()
 	@staticmethod
-	def calculateTiles( points, zoom = 10 ):
+	def calculateTiles( bounds, zoom = 10 ):
 
 		tilexmin = tileymin = 200000
 		tilexmax = tileymax = 0
-		
-		# TODO could we do odds/evens to lighten this load?
-		
-		for point in points:
-			[xtile, ytile] = Tile.getNumber( point[0], point[1], zoom )
-			tilexmin = min(xtile, tilexmin)
-			tilexmax = max(xtile, tilexmax)
-			tileymin = min(ytile, tileymin)
-			tileymax = max(ytile, tileymax)
+		[tilexmin, tileymin] = Tile.getNumber( bounds[0][0], bounds[0][1], zoom )
+		[tilexmax, tileymax] = Tile.getNumber( bounds[1][0], bounds[1][1], zoom )
 
-		# TODO possibly expand here wrt image ‘border’
-		expand = 1
-
-		return {'x': { 'min':tilexmin - expand, 'max':tilexmax + 1+expand, 'count': tilexmax - tilexmin +1 + 2 * expand },
-				'y': { 'min':tileymin - expand, 'max':tileymax + 1+expand, 'count': tileymax - tileymin +1 + 2 * expand },
+		return {'x': { 'min':tilexmin, 'max':tilexmax , 'count': tilexmax - tilexmin +1 },
+				'y': { 'min':tileymin, 'max':tileymax , 'count': tileymax - tileymin +1 },
 				'zoom': zoom }
 
 	# returns tile bounding box that is automatically scaled to a correct zoom level.
 	# The BB is +1 in all directions so we can trim the image later ()
 	@staticmethod
-	def calculateTilesAuto( points ):
+	def calculateTilesAuto( bounds ):
 
 		zoomdefault = 16
 
 		# get the default scale tiles
-		tiles = Tile.calculateTiles( points, zoomdefault )
-
-		while ( (tiles['x']['count']) * (tiles['y']['count']) > (osize+1 * osize+1) ):
+		tiles = Tile.calculateTiles( bounds, zoomdefault )
+		while ( (tiles['x']['count']) * (tiles['y']['count']) >= (osize * osize) ):
 			zoomdefault -= 1
 			tiles['x']['count'] >>= 1
 			tiles['y']['count'] >>= 1
 
 		# get the re-scaled tiles
-		return Tile.calculateTiles( points, zoomdefault )
+		return Tile.calculateTiles( bounds, zoomdefault )
 
 	@staticmethod
 	def	getPixelForCoord( point, bounds, imagesize ):
+		return (int((bounds[0][1] - point[1] ) / bounds[2][1] * imagesize[0]) ,
+				int((bounds[0][0] - point[0] ) / bounds[2][0] * imagesize[1]))
 
-		# TODO  need to factor in Earth skew
-		return (((bounds[0][1] - point[1] ) / bounds[2][1] * imagesize[1]) + 128 ,
-				((bounds[0][0] - point[0] ) / bounds[2][0] * imagesize[0]) + 128)
-
+	# TODO fetch more bordering tiles than we need, so we can better fit out image!
 	@staticmethod
 	def	populateBackground( tiles, image ):
 		rootx = tiles['x']['min']
@@ -156,9 +142,10 @@ class Tile:
 # GPX helper class, for singular files
 class GPX:
 	points = []
+	pointsbounds = [(),()]
+
 	tiles = []
-	bounds = [(),(), ()]
-	delta = [0,0]
+	tilesbounds = [(),(), ()]
 
 	def load(self, dom):
 		# we're going to be ignorant of anything but trkpt for now
@@ -174,18 +161,28 @@ class GPX:
 		dom = parseString(string)
 		self.load(dom)
 
+	# calculate lat/long bounds of path
+	# calculate tile area, and produce tile bounds
 	def computeBounds(self):
-		# here we use self.points and get the area of the drawing
-		# (tiles), and figure out the lat/long bounds
-		# then we return
-		self.tiles = Tile.calculateTilesAuto( self.points )
 
-		self.bounds[0] = Tile.getCoords( self.tiles['x']['min'], self.tiles['y']['min'], self.tiles['zoom'] )
-		# because tile coords are from top left
-		self.bounds[1] = Tile.getCoords( self.tiles['x']['max']+1, self.tiles['y']['max']+1, self.tiles['zoom']  )		
-		self.bounds[2] = (	self.bounds[0][0] - self.bounds[1][0],
-							self.bounds[0][1] - self.bounds[1][1] )
+		latmin = longmin = 200000
+		latmax = longmax = -200000
 		
+		for point in self.points:
+			latmin = min(point[0], latmin)
+			latmax = max(point[0], latmax)
+			longmin = min(point[1], longmin)
+			longmax = max(point[1], longmax)
+		self.pointsbounds = [(latmax, longmin), (latmin, longmax)]
+
+		self.tiles = Tile.calculateTilesAuto( self.pointsbounds )
+
+		self.tilesbounds[0] = Tile.getCoords( self.tiles['x']['min'], self.tiles['y']['min'], self.tiles['zoom'] )
+		# because tile coords are from top left
+		self.tilesbounds[1] = Tile.getCoords( self.tiles['x']['max']+1, self.tiles['y']['max']+1, self.tiles['zoom'] )		
+		self.tilesbounds[2] = (	self.tilesbounds[0][0] - self.tilesbounds[1][0],
+							self.tilesbounds[0][1] - self.tilesbounds[1][1] )
+
 	def drawTrack(self, filename):
 
 		imagesize = ( self.tiles['x']['count'] * 256, self.tiles['y']['count'] * 256 )
@@ -198,28 +195,54 @@ class GPX:
 		draw = ImageDraw.Draw(image)
 
 		# compute pixel locations
-		pointlist = map( lambda x: Tile.getPixelForCoord(x, self.bounds, imagesize), self.points)
+		pointlist = map( lambda x: Tile.getPixelForCoord(x, self.tilesbounds, imagesize), self.points)
 
 		# draw
-		# print pointlist
-		draw.line(pointlist, fill='blue', width=2)
+		# TODO give user option to style
+		draw.line(pointlist, fill='black', width=1)
 
-		# trim image by tile - border
-		# atm, its ½ tile wide..
-		trim = int(256/2)
-		image = image.crop( tuple( [trim, trim] + map( lambda x: x-trim, image.size) ) )
+		# Attempt to intelligently trim the image if its over
+		# TODO give user a gutter option
+		# TODO give user a scale option
+		# TODO move to function
+		if osize*osize < self.tiles['x']['count']*self.tiles['y']['count']:
+			path = [ Tile.getPixelForCoord( self.pointsbounds[0], self.tilesbounds, imagesize),
+					Tile.getPixelForCoord( self.pointsbounds[1], self.tilesbounds, imagesize) ]
+			imagebox = [ [0,0], list(imagesize) ]
+			# so here we have a bounding box for the path, can we trim edges of image?
+			if imagesize[0] > osize * 256:
+				# TODO assumption is, we can trim a tile, might need 2 × in future
+				if path[1][0] - path [0][0] < imagesize[0] - 256:
+					# We can trim
+					centrex = (path[1][0] - path [0][0])/2 + path[0][0]
+					halfwidth = ((imagesize[0] - 256) / 2)
+					imagebox[0][0] = centrex - halfwidth
+					imagebox[1][0] = centrex + halfwidth
+
+			if imagesize[1] > osize * 256:
+				# TODO same as above
+				if path[1][1] - path [0][1] < imagesize[1] - 256:
+					centrey = (path[1][1] - path [0][1])/2 + path[0][1]
+					halfwidth = ((imagesize[1] - 256) / 2)
+					imagebox[0][1] = centrey - halfwidth
+					imagebox[1][1] = centrey + halfwidth
+
+			imagebox = reduce(lambda x,y: x+y,imagebox)
+			image = image.crop( imagebox )
+
+		#trim = int(256/2)
+		#image = image.crop( tuple( [trim, trim] + map( lambda x: x-trim, image.size) ) )
 
 		# write file 
 		image.save(filename, "PNG")
 
-		pass
-
 # Just test data for now
 track = GPX()
-track.loadFromFile('winchcombe.gpx')
-# track.loadFromFile('2010-07-12_12-18-49.gpx')
+# track.loadFromFile('winchcombe.gpx')
+track.loadFromFile('2010-07-12_12-18-49.gpx')
+print "Loaded"
 
 # push this into loading, obviously
 track.computeBounds()
-track.drawTrack('output.png')
+track.drawTrack('output2.png')
 
