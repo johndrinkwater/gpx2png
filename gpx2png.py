@@ -33,14 +33,18 @@ zoom = 10
 # need to include CC notice if we use tiles
 cnotice = "CC BY-SA OpenStreetMap"
 
-# TODO caching?
+cachelocation = 'cache'
+# build dir
+cachelocation = os.path.join('.', cachelocation)
+if not os.path.isdir(cachelocation):
+	os.mkdir(cachelocation)
+
 # TODO text overlays
 # TODO SVG graphics for cnotice
 # TODO options for tiles renderer
 
 # variables
 version = 0.01
-
 
 # TODO parse cli here
 tilerenderer = 'mapnik'
@@ -139,8 +143,9 @@ class Tile:
 			for y in range(tiles['y']['min'],tiles['y']['min'] + tiles['y']['count'] + 1):
 				fromx = abs(rootx - x)
 				fromy = abs(rooty - y)
-				# TODO pick a better location to cache tiles
 				temptilename = '-'.join( ['cache', str(zoom), str(x), str(y) ] ) + '.png' 
+				temptilename = os.path.join(cachelocation, temptilename)
+				# TODO thread this?
 				if not os.path.isfile( temptilename ):
 					print 'Fetching tile…'
 					urllib.urlretrieve( Tile.getTileURL( x, y, tiles['zoom'] ), 
