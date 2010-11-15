@@ -42,10 +42,6 @@ if not os.path.isdir(cachelocation):
 # variables
 version = 0.01
 
-# TODO parse cli here
-tilerenderer = 'mapnik'
-tileserver = 'http://tile.openstreetmap.org'
-
 # TODO if Verbose, output parsed options
 
 # XXX we are just using defaults now
@@ -53,7 +49,8 @@ tileserver = 'http://tile.openstreetmap.org'
 #### Helper classes here
 
 class Tile:
-	
+
+	# Returns an OSM tile coordinate for the lat, long provided
 	@staticmethod
 	def getNumber( lat, long, zoom ):
 		# Code from OSM
@@ -63,6 +60,7 @@ class Tile:
 		ytile = int((1.0 - math.log(math.tan(latrad) + (1 / math.cos(latrad))) / math.pi) / 2.0 * n)
 		return (xtile, ytile)
 
+	# Returns a lat, long for the provided OSM tile coordinate
 	@staticmethod
 	def getCoords( xtile, ytile, zoom ):
 		# Code from OSM
@@ -72,9 +70,10 @@ class Tile:
 		lat = math.degrees(latrad)
 		return(lat, long)
 
+	# Return a URL for the tile at the tileserver
 	@staticmethod
-	def getTileURL( xtile, ytile, zoom ):
-		return '/'.join( [tileserver, str(zoom), str(xtile), str(ytile)] ) + '.png'
+	def getTileURL( tileserver, tilex, tiley, zoom ):
+		return '/'.join( [tileserver, zoom, str(tilex), str(tiley)] ) + '.png'
 
 	# returns tile bounding box for the points at this zoom level
 	@staticmethod
@@ -113,19 +112,24 @@ class Tile:
 
 	# TODO fetch more bordering tiles than we need, so we can better fit out image!
 	@staticmethod
-	def	populateBackground( tiles, image ):
+	def	populateBackground( server, style, tiles, image ):
 		rootx = tiles['x']['min']
 		rooty = tiles['y']['min']
+		zoom = str(tiles['zoom'])
+		templocation = os.path.join(cachelocation, style)
+		if not os.path.isdir(templocation):
+			os.mkdir(templocation)
+
 		for x in range(tiles['x']['min'],tiles['x']['min'] + tiles['x']['count'] + 1):
 			for y in range(tiles['y']['min'],tiles['y']['min'] + tiles['y']['count'] + 1):
 				fromx = abs(rootx - x)
 				fromy = abs(rooty - y)
-				temptilename = '-'.join( ['cache', str(tiles['zoom']), str(x), str(y) ] ) + '.png'
-				temptilename = os.path.join(cachelocation, temptilename)
+				temptilename = '-'.join( ['cache', zoom, str(x), str(y) ] ) + '.png'
+				temptilename = os.path.join(templocation, temptilename)
 				# TODO thread this?
 				if not os.path.isfile( temptilename ):
 					print 'Fetching tile…'
-					urllib.urlretrieve( Tile.getTileURL( x, y, tiles['zoom'] ), 
+					urllib.urlretrieve( Tile.getTileURL( server, x, y, zoom ),
 						temptilename )
 
 				tile = Image.open( temptilename )
@@ -147,11 +151,20 @@ class GPX:
 		'size': 2, # Max tile w×h for output image
 		'border': 20, # TODO distance from edge of image to nearest path?
 		'line': 1,
-		'filename': 'output.png' # Default output filename if not provided
+		'filename': 'output.png', # Default output filename if not provided
+		'renderer': 'mapnik', # OSM server to use
 		}
 
 	def setOptions(self, opt):
 		self.options.update(opt)
+
+		# Push the selected tile server into options
+		tileservers = { 'mapnik': 'http://tile.openstreetmap.org',
+						'osmarender': 'http://tah.openstreetmap.org/Tiles/tile/',
+						'cyclemap': 'http://andy.sandbox.cloudmade.com/tiles/cycle/',
+						}
+		tileserver = { 'tileserver' : tileservers.get( self.options.get('renderer') ) }
+		self.options.update(tileserver)
 
 	def load(self, dom):
 		# we're going to be ignorant of anything but trkpt for now
@@ -199,7 +212,7 @@ class GPX:
 		image = Image.new("RGB", imagesize, '#ffffff')
 
 		# this will write the tiles into the image..
-		image = Tile.populateBackground(self.tiles, image)
+		image = Tile.populateBackground(self.options.get('tileserver'), self.options.get('renderer'), self.tiles, image)
 
 		# draw track (skewing it to the projection)
 		draw = ImageDraw.Draw(image)
@@ -252,7 +265,7 @@ class GPX:
 track = GPX()
 #track.setOptions({'size': 3, 'filename': '2010-07-12_12-18-49.png' })
 #track.loadFromFile('2010-07-12_12-18-49.gpx')
-track.setOptions({'size': 3, 'filename': 'winchcombe.png' })
+track.setOptions({'size': 3, 'filename': 'winchcombe.png', 'renderer': 'cyclemap' })
 track.loadFromFile('winchcombe.gpx')
 track.drawTrack()
 
