@@ -138,7 +138,7 @@ class Tile:
 			for y in range(tiles['y']['min'],tiles['y']['min'] + tiles['y']['count'] + 1):
 				fromx = abs(rootx - x)
 				fromy = abs(rooty - y)
-				temptilename = '-'.join( ['cache', str(zoom), str(x), str(y) ] ) + '.png' 
+				temptilename = '-'.join( ['cache', str(tiles['zoom']), str(x), str(y) ] ) + '.png'
 				temptilename = os.path.join(cachelocation, temptilename)
 				# TODO thread this?
 				if not os.path.isfile( temptilename ):
