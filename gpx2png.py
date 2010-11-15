@@ -10,7 +10,7 @@ import urllib
 from xml.dom.minidom import parse
 
 # defaults
-verbose = False
+verbose = True
 
 # px border around track
 border = 50
@@ -25,8 +25,7 @@ cnotice = "CC BY-SA OpenStreetMap"
 # variables
 version = 0.01
 
-# TODO if Verbose, output parsed options
-
+# TODO if verbose, output parsed options
 # XXX we are just using defaults now
 
 # Static methods for tile maths
@@ -60,6 +59,9 @@ class Tile:
 	# returns tile bounding box for the points at this zoom level
 	@staticmethod
 	def calculateTiles( bounds, zoom = 10 ):
+		global verbose
+		if verbose:
+			print 'Track.calculateTiles()'
 
 		tilexmin = tileymin = 200000
 		tilexmax = tileymax = 0
@@ -74,6 +76,9 @@ class Tile:
 	# The BB is +1 in all directions so we can trim the image later ()
 	@staticmethod
 	def calculateTilesAuto( bounds, size ):
+		global verbose
+		if verbose:
+			print 'Track.calculateTilesAuto()'
 
 		zoomdefault = 16
 
@@ -95,6 +100,8 @@ class Tile:
 	# TODO fetch more bordering tiles than we need, so we can better fit out image!
 	@staticmethod
 	def populateBackground( server, cachelocation, tiles, image ):
+		global verbose
+
 		rootx = tiles['x']['min']
 		rooty = tiles['y']['min']
 		zoom = str(tiles['zoom'])
@@ -110,7 +117,8 @@ class Tile:
 				temptilename = os.path.join(cachelocation, temptilename)
 				# TODO thread this?
 				if not os.path.isfile( temptilename ):
-					print 'Fetching tile…'
+					if verbose:
+						print 'Fetching tile ' , x, '×', y, '…'
 					urllib.urlretrieve( Tile.getTileURL( server, x, y, zoom ),
 						temptilename )
 
@@ -140,6 +148,11 @@ class GPX:
 		'cache': 'cache', # Default cache location
 		}
 
+	def __init__( self ):
+		global verbose
+		if verbose:
+			print 'GPX()'
+
 	def setOptions( self, opt ):
 		self.options.update(opt)
 
@@ -151,7 +164,15 @@ class GPX:
 		tileserver = { 'tileserver' : tileservers.get( self.options.get('renderer') ) }
 		self.options.update(tileserver)
 
+		global verbose
+		if verbose:
+			print 'GPX.setOptions(', self.options, ')'
+
 	def load( self, dom ):
+		global verbose
+		if verbose:
+			print 'GPX.load()'
+
 		# we're going to be ignorant of anything but trkpt for now
 		# TODO support waypoints, track segments
 		trackPoints = dom.getElementsByTagName('trkpt')
@@ -159,16 +180,27 @@ class GPX:
 		self.computeBounds()
 
 	def loadFromFile( self, file ):
+		global verbose
+		if verbose:
+			print 'GPX.loadFromFile(', file, ')'
+
 		dom = parse(file)
 		self.load(dom)
 
 	def loadFromString( self, string ):
+		global verbose
+		if verbose:
+			print 'GPX.loadFromString()'
+
 		dom = parseString(string)
 		self.load(dom)
 
 	# calculate lat/long bounds of path
 	# calculate tile area, and produce tile bounds
 	def computeBounds( self ):
+		global verbose
+		if verbose:
+			print 'GPX.computeBounds()'
 
 		latmin = longmin = 200000
 		latmax = longmax = -200000
@@ -189,6 +221,9 @@ class GPX:
 							self.tilesbounds[0][1] - self.tilesbounds[1][1] )
 
 	def drawTrack( self, filename = '' ):
+		global verbose
+		if verbose:
+			print 'GPX.drawTrack()'
 
 		if filename == '':
 			filename = self.options.get('filename')
@@ -247,9 +282,9 @@ class GPX:
 
 # Just test data for now
 track = GPX()
-track.setOptions({'size': 2, 'filename': '2010-07-12_12-18-49.png' })
-track.loadFromFile('2010-07-12_12-18-49.gpx')
-#track.setOptions({'size': 3, 'filename': 'winchcombe.png' })
-#track.loadFromFile('winchcombe.gpx')
+#track.setOptions({'size': 2, 'filename': '2010-07-12_12-18-49.png' })
+#track.loadFromFile('2010-07-12_12-18-49.gpx')
+track.setOptions({'size': 3, 'filename': 'winchcombe.png', 'background': False })
+track.loadFromFile('winchcombe.gpx')
 track.drawTrack()
 
