@@ -10,21 +10,10 @@ import urllib
 from xml.dom.minidom import parse
 
 # defaults
-ofilename = "map.png"
-
 verbose = False
-
-# use tiles from OSM
-background = True
 
 # px border around track
 border = 50
-
-# Compute zoom for us, use osize
-autozoom = True
-
-# default if not auto..
-zoom = 10
 
 # need to include CC notice if we use tiles
 cnotice = "CC BY-SA OpenStreetMap"
@@ -143,7 +132,9 @@ class GPX:
 	options = {
 		'size': 2, # Max tile w×h for output image
 		'border': 20, # TODO distance from edge of image to nearest path?
-		'line': 1,
+		'background': True, # Use OSM tiles to flesh the background out
+		'linecolour': 'black',
+		'linewidth': 1,
 		'filename': 'output.png', # Default output filename if not provided
 		'renderer': 'mapnik', # OSM server to use
 		'cache': 'cache', # Default cache location
@@ -205,26 +196,24 @@ class GPX:
 		imagesize = ( self.tiles['x']['count'] * 256, self.tiles['y']['count'] * 256 )
 		image = Image.new("RGB", imagesize, '#ffffff')
 
-		# this will write the tiles into the image..
-		cachelocation = os.path.join('.',  self.options.get('cache'), self.options.get('renderer'))
-		image = Tile.populateBackground(self.options.get('tileserver'), cachelocation, self.tiles, image)
-
-		# draw track (skewing it to the projection)
-		draw = ImageDraw.Draw(image)
+		# If user wants OSM tile background, do it
+		# TODO without OSM tiles, our current code wont crop the track well
+		if self.options.get('background'):
+			cachelocation = os.path.join('.',  self.options.get('cache'), self.options.get('renderer'))
+			image = Tile.populateBackground(self.options.get('tileserver'), cachelocation, self.tiles, image)
 
 		# compute pixel locations
 		pointlist = map( lambda x: Tile.getPixelForCoord(x, self.tilesbounds, imagesize), self.points)
 
-		# draw
 		# TODO give user option to style
-		draw.line(pointlist, fill='black', width=self.options.get('line'))
-
-		size = self.options.get('size')
+		draw = ImageDraw.Draw(image)
+		draw.line(pointlist, fill=self.options.get('linecolour'), width=self.options.get('linewidth'))
 
 		# Attempt to intelligently trim the image if its over
 		# TODO give user a gutter option
 		# TODO give user a scale option
 		# TODO move to function
+		size = self.options.get('size')
 		if size*size < self.tiles['x']['count']*self.tiles['y']['count']:
 			path = [ Tile.getPixelForCoord( self.pointsbounds[0], self.tilesbounds, imagesize),
 					Tile.getPixelForCoord( self.pointsbounds[1], self.tilesbounds, imagesize) ]
