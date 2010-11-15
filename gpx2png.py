@@ -124,16 +124,11 @@ class Tile:
 		return Tile.calculateTiles( points, zoomdefault )
 
 	@staticmethod
-	def	getPixelForCoord( point, bounds, tiles ):
+	def	getPixelForCoord( point, bounds, imagesize ):
 
-		# return pixel coordinate in image of 
-
-		#tile = Tile.getNumber( point[0], point[1], tiles['zoom'] )
-		#offsetx = tile[0] - tiles['x']['min']
-		#offsety = tile[1] - tiles['y']['min']
-		#print offsetx, offsety
-		return [1,1]
-		pass
+		# TODO  need to factor in Earth skew
+		return (((bounds[0][1] - point[1] ) / bounds[2][1] * imagesize[1]) + 128 ,
+				((bounds[0][0] - point[0] ) / bounds[2][0] * imagesize[0]) + 128)
 
 	@staticmethod
 	def	populateBackground( tiles, image ):
@@ -162,7 +157,7 @@ class Tile:
 class GPX:
 	points = []
 	tiles = []
-	bounds = [(),()]
+	bounds = [(),(), ()]
 	delta = [0,0]
 
 	def load(self, dom):
@@ -188,6 +183,8 @@ class GPX:
 		self.bounds[0] = Tile.getCoords( self.tiles['x']['min'], self.tiles['y']['min'], self.tiles['zoom'] )
 		# because tile coords are from top left
 		self.bounds[1] = Tile.getCoords( self.tiles['x']['max']+1, self.tiles['y']['max']+1, self.tiles['zoom']  )		
+		self.bounds[2] = (	self.bounds[0][0] - self.bounds[1][0],
+							self.bounds[0][1] - self.bounds[1][1] )
 		
 	def drawTrack(self, filename):
 
@@ -201,9 +198,11 @@ class GPX:
 		draw = ImageDraw.Draw(image)
 
 		# compute pixel locations
-		pointlist = map( lambda x: Tile.getPixelForCoord(x, self.bounds, self.tiles), self.points)
+		pointlist = map( lambda x: Tile.getPixelForCoord(x, self.bounds, imagesize), self.points)
 
 		# draw
+		# print pointlist
+		draw.line(pointlist, fill='blue', width=2)
 
 		# trim image by tile - border
 		# atm, its ½ tile wide..
