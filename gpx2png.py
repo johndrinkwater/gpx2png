@@ -287,25 +287,27 @@ class GPX:
 		#trim = int(256/2)
 		#image = image.crop( tuple( [trim, trim] + map( lambda x: x-trim, image.size) ) )
 
-		# Draw CC licence image
-		ccimage = 'cc-by-sa.' + self.options.get('notice') + '.png'
-		# TODO fail if image is missing
-		cclogo = Image.open(ccimage)
-		cclocation = {
-			'small': (85,20),  # small 80 × 15
-			'normal': (93,36), # normal 88 × 31
-		}.get( self.options.get('notice'), (85,20) )
-		cclocation = (image.size[0] - cclocation[0], image.size[1] - cclocation[1] )
-		image.paste(cclogo, cclocation, cclogo)
-		# Draw OSM logo
-		osmlogo = Image.open('osm.png')
-		osmlogosize = {
-			'small': 16,  # small 80 × 15
-			'normal': 32, # normal 88 × 31
-		}.get( self.options.get('notice'), 32 )
-		osmlogo = osmlogo.resize( (osmlogosize,osmlogosize), Image.ANTIALIAS)
-		osmlocation = (cclocation[0] - osmlogosize - 5, cclocation[1])
-		image.paste(osmlogo, osmlocation, osmlogo)
+		# Only draw if OSM background used.
+		if self.options.get('background'):
+			# Draw CC licence image
+			ccimage = 'cc-by-sa.' + self.options.get('notice') + '.png'
+			# TODO fail if image is missing
+			cclogo = Image.open(ccimage)
+			cclocation = {
+				'small': (85,20),  # small 80 × 15
+				'normal': (93,36), # normal 88 × 31
+			}.get( self.options.get('notice'), (85,20) )
+			cclocation = (image.size[0] - cclocation[0], image.size[1] - cclocation[1] )
+			image.paste(cclogo, cclocation, cclogo)
+			# Draw OSM logo
+			osmlogo = Image.open('osm.png')
+			osmlogosize = {
+				'small': 16,  # small 80 × 15
+				'normal': 32, # normal 88 × 31
+			}.get( self.options.get('notice'), 32 )
+			osmlogo = osmlogo.resize( (osmlogosize,osmlogosize), Image.ANTIALIAS)
+			osmlocation = (cclocation[0] - osmlogosize - 5, cclocation[1])
+			image.paste(osmlogo, osmlocation, osmlogo)
 
 
 		# write file 
@@ -321,7 +323,9 @@ if __name__ == "__main__":
 	parser.add_option("-o", "--output",
 					  action="store", dest="filename", default='',
 					  help="filename to write the track image to")
-
+	parser.add_option("-b", "--background",
+					  action="store_false", dest="background", default=True,
+					  help="disable output of OSM tile background")
 
 	(options, args) = parser.parse_args()
 	verbose = options.verbose
