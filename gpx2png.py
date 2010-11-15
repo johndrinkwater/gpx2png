@@ -140,7 +140,7 @@ class GPX:
 		'cache': 'cache', # Default cache location
 		}
 
-	def setOptions(self, opt):
+	def setOptions( self, opt ):
 		self.options.update(opt)
 
 		# Push the selected tile server into options
@@ -151,24 +151,24 @@ class GPX:
 		tileserver = { 'tileserver' : tileservers.get( self.options.get('renderer') ) }
 		self.options.update(tileserver)
 
-	def load(self, dom):
+	def load( self, dom ):
 		# we're going to be ignorant of anything but trkpt for now
 		# TODO support waypoints, track segments
 		trackPoints = dom.getElementsByTagName('trkpt')
 		self.points = map( lambda x: [float(x.getAttribute('lat')), float(x.getAttribute('lon'))], trackPoints)
 		self.computeBounds()
 
-	def loadFromFile(self, file):
+	def loadFromFile( self, file ):
 		dom = parse(file)
 		self.load(dom)
 
-	def loadFromString(self, string):
+	def loadFromString( self, string ):
 		dom = parseString(string)
 		self.load(dom)
 
 	# calculate lat/long bounds of path
 	# calculate tile area, and produce tile bounds
-	def computeBounds(self):
+	def computeBounds( self ):
 
 		latmin = longmin = 200000
 		latmax = longmax = -200000
@@ -188,7 +188,7 @@ class GPX:
 		self.tilesbounds[2] = (	self.tilesbounds[0][0] - self.tilesbounds[1][0],
 							self.tilesbounds[0][1] - self.tilesbounds[1][1] )
 
-	def drawTrack(self, filename = ''):
+	def drawTrack( self, filename = '' ):
 
 		if filename == '':
 			filename = self.options.get('filename')
