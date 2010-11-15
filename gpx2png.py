@@ -32,10 +32,6 @@ verbose = False
 # need to include CC notice if we use tiles
 cnotice = "CC BY-SA OpenStreetMap"
 
-# TODO text overlays
-# TODO SVG graphics for cnotice
-# TODO options for tiles renderer
-
 # variables
 __version__ = 0.50
 
