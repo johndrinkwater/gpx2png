@@ -20,10 +20,6 @@ background = True
 # px border around track
 border = 50
 
-# Max tile w×h for output image, we auto scale
-# TODO allow for wider/taller output images?
-osize = 2
-
 # Compute zoom for us, use osize
 autozoom = True
 
@@ -96,13 +92,13 @@ class Tile:
 	# returns tile bounding box that is automatically scaled to a correct zoom level.
 	# The BB is +1 in all directions so we can trim the image later ()
 	@staticmethod
-	def calculateTilesAuto( bounds ):
+	def calculateTilesAuto( bounds, size ):
 
 		zoomdefault = 16
 
 		# get the default scale tiles
 		tiles = Tile.calculateTiles( bounds, zoomdefault )
-		while ( (tiles['x']['count']) * (tiles['y']['count']) >= (osize * osize) ):
+		while ( (tiles['x']['count']) * (tiles['y']['count']) >= ( size * size) ):
 			zoomdefault -= 1
 			tiles['x']['count'] >>= 1
 			tiles['y']['count'] >>= 1
@@ -147,6 +143,16 @@ class GPX:
 	tiles = []
 	tilesbounds = [(),(), ()]
 
+	options = {
+		'size': 2, # Max tile w×h for output image
+		'border': 20, # TODO distance from edge of image to nearest path?
+		'line': 1,
+		'filename': 'output.png' # Default output filename if not provided
+		}
+
+	def setOptions(self, opt):
+		self.options.update(opt)
+
 	def load(self, dom):
 		# we're going to be ignorant of anything but trkpt for now
 		# TODO support waypoints, track segments
@@ -176,7 +182,7 @@ class GPX:
 			longmax = max(point[1], longmax)
 		self.pointsbounds = [(latmax, longmin), (latmin, longmax)]
 
-		self.tiles = Tile.calculateTilesAuto( self.pointsbounds )
+		self.tiles = Tile.calculateTilesAuto( self.pointsbounds, self.options.get('size') )
 
 		self.tilesbounds[0] = Tile.getCoords( self.tiles['x']['min'], self.tiles['y']['min'], self.tiles['zoom'] )
 		# because tile coords are from top left
@@ -184,7 +190,10 @@ class GPX:
 		self.tilesbounds[2] = (	self.tilesbounds[0][0] - self.tilesbounds[1][0],
 							self.tilesbounds[0][1] - self.tilesbounds[1][1] )
 
-	def drawTrack(self, filename):
+	def drawTrack(self, filename = ''):
+
+		if filename == '':
+			filename = self.options.get('filename')
 
 		imagesize = ( self.tiles['x']['count'] * 256, self.tiles['y']['count'] * 256 )
 		image = Image.new("RGB", imagesize, '#ffffff')
@@ -200,18 +209,20 @@ class GPX:
 
 		# draw
 		# TODO give user option to style
-		draw.line(pointlist, fill='black', width=1)
+		draw.line(pointlist, fill='black', width=self.options.get('line'))
+
+		size = self.options.get('size')
 
 		# Attempt to intelligently trim the image if its over
 		# TODO give user a gutter option
 		# TODO give user a scale option
 		# TODO move to function
-		if osize*osize < self.tiles['x']['count']*self.tiles['y']['count']:
+		if size*size < self.tiles['x']['count']*self.tiles['y']['count']:
 			path = [ Tile.getPixelForCoord( self.pointsbounds[0], self.tilesbounds, imagesize),
 					Tile.getPixelForCoord( self.pointsbounds[1], self.tilesbounds, imagesize) ]
 			imagebox = [ [0,0], list(imagesize) ]
 			# so here we have a bounding box for the path, can we trim edges of image?
-			if imagesize[0] > osize * 256:
+			if imagesize[0] > size * 256:
 				# TODO assumption is, we can trim a tile, might need 2 × in future
 				if path[1][0] - path [0][0] < imagesize[0] - 256:
 					# We can trim
@@ -220,7 +231,7 @@ class GPX:
 					imagebox[0][0] = centrex - halfwidth
 					imagebox[1][0] = centrex + halfwidth
 
-			if imagesize[1] > osize * 256:
+			if imagesize[1] > size * 256:
 				# TODO same as above
 				if path[1][1] - path [0][1] < imagesize[1] - 256:
 					centrey = (path[1][1] - path [0][1])/2 + path[0][1]
@@ -239,8 +250,9 @@ class GPX:
 
 # Just test data for now
 track = GPX()
-# track.loadFromFile('winchcombe.gpx')
-track.loadFromFile('2010-07-12_12-18-49.gpx')
-
-track.drawTrack('output2.png')
+#track.setOptions({'size': 3, 'filename': '2010-07-12_12-18-49.png' })
+#track.loadFromFile('2010-07-12_12-18-49.gpx')
+track.setOptions({'size': 3, 'filename': 'winchcombe.png' })
+track.loadFromFile('winchcombe.gpx')
+track.drawTrack()
 
