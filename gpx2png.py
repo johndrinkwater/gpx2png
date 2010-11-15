@@ -152,6 +152,7 @@ class GPX:
 		# TODO support waypoints, track segments
 		trackPoints = dom.getElementsByTagName('trkpt')
 		self.points = map( lambda x: [float(x.getAttribute('lat')), float(x.getAttribute('lon'))], trackPoints)
+		self.computeBounds()
 	
 	def loadFromFile(self, file):
 		dom = parse(file)
@@ -240,9 +241,6 @@ class GPX:
 track = GPX()
 # track.loadFromFile('winchcombe.gpx')
 track.loadFromFile('2010-07-12_12-18-49.gpx')
-print "Loaded"
 
-# push this into loading, obviously
-track.computeBounds()
 track.drawTrack('output2.png')
 
