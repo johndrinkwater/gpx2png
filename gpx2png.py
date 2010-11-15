@@ -190,11 +190,8 @@ class GPX:
 		self.bounds[1] = Tile.getCoords( self.tiles['x']['max']+1, self.tiles['y']['max']+1, self.tiles['zoom']  )		
 		
 	def drawTrack(self, filename):
-		# write track out to this filename
 
 		imagesize = ( self.tiles['x']['count'] * 256, self.tiles['y']['count'] * 256 )
-		print imagesize
-
 		image = Image.new("RGB", imagesize, '#ffffff')
 
 		# this will write the tiles into the image..
@@ -214,7 +211,7 @@ class GPX:
 		image = image.crop( tuple( [trim, trim] + map( lambda x: x-trim, image.size) ) )
 
 		# write file 
-		image.save('outputimage.png', "PNG")
+		image.save(filename, "PNG")
 
 		pass
 
@@ -225,5 +222,5 @@ track.loadFromFile('winchcombe.gpx')
 
 # push this into loading, obviously
 track.computeBounds()
-track.drawTrack('temp')
+track.drawTrack('output.png')
 
