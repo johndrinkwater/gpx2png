@@ -29,12 +29,6 @@ zoom = 10
 # need to include CC notice if we use tiles
 cnotice = "CC BY-SA OpenStreetMap"
 
-cachelocation = 'cache'
-# build dir
-cachelocation = os.path.join('.', cachelocation)
-if not os.path.isdir(cachelocation):
-	os.mkdir(cachelocation)
-
 # TODO text overlays
 # TODO SVG graphics for cnotice
 # TODO options for tiles renderer
@@ -111,20 +105,20 @@ class Tile:
 
 	# TODO fetch more bordering tiles than we need, so we can better fit out image!
 	@staticmethod
-	def populateBackground( server, style, tiles, image ):
+	def populateBackground( server, cachelocation, tiles, image ):
 		rootx = tiles['x']['min']
 		rooty = tiles['y']['min']
 		zoom = str(tiles['zoom'])
-		templocation = os.path.join(cachelocation, style)
-		if not os.path.isdir(templocation):
-			os.mkdir(templocation)
+
+		if not os.path.isdir(cachelocation):
+			os.makedirs(cachelocation)
 
 		for x in range(tiles['x']['min'],tiles['x']['min'] + tiles['x']['count'] + 1):
 			for y in range(tiles['y']['min'],tiles['y']['min'] + tiles['y']['count'] + 1):
 				fromx = abs(rootx - x)
 				fromy = abs(rooty - y)
-				temptilename = '-'.join( ['cache', zoom, str(x), str(y) ] ) + '.png'
-				temptilename = os.path.join(templocation, temptilename)
+				temptilename = '-'.join( [zoom, str(x), str(y) ] ) + '.png'
+				temptilename = os.path.join(cachelocation, temptilename)
 				# TODO thread this?
 				if not os.path.isfile( temptilename ):
 					print 'Fetching tile…'
@@ -152,6 +146,7 @@ class GPX:
 		'line': 1,
 		'filename': 'output.png', # Default output filename if not provided
 		'renderer': 'mapnik', # OSM server to use
+		'cache': 'cache', # Default cache location
 		}
 
 	def setOptions(self, opt):
@@ -211,7 +206,8 @@ class GPX:
 		image = Image.new("RGB", imagesize, '#ffffff')
 
 		# this will write the tiles into the image..
-		image = Tile.populateBackground(self.options.get('tileserver'), self.options.get('renderer'), self.tiles, image)
+		cachelocation = os.path.join('.',  self.options.get('cache'), self.options.get('renderer'))
+		image = Tile.populateBackground(self.options.get('tileserver'), cachelocation, self.tiles, image)
 
 		# draw track (skewing it to the projection)
 		draw = ImageDraw.Draw(image)
