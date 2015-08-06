@@ -1,7 +1,7 @@
 #! /usr/bin/python
 # -*- coding: utf-8 -*-
 """
-	© 2010 John Drinkwater <john@nextraweb.com>
+	© 2015 John Drinkwater <john@nextraweb.com>
 	http://johndrinkwater.name/code/gpx2png/
 
     This program is free software: you can redistribute it and/or modify
@@ -20,8 +20,7 @@
 """
 
 import Image, ImageDraw
-import math
-import os
+import math, os, sys
 import urllib
 from xml.dom.minidom import parse
 from optparse import OptionParser
@@ -329,6 +328,10 @@ if __name__ == "__main__":
 
 	(options, args) = parser.parse_args()
 	verbose = options.verbose
+
+	if len(args) == 0:
+		parser.print_help()
+		sys.exit(-1)
 
 	track = GPX()
 	track.setOptions( options.__dict__ )
