@@ -312,6 +312,20 @@ class GPX:
 		# write file
 		image.save(filename, "PNG")
 
+class KML(GPX):
+
+	def load( self, dom ):
+		global verbose
+		if verbose:
+			print 'KML.load()'
+
+		# we're going to be ignorant of anything but gx:coord for now
+		# TODO support waypoints, track segments
+		trackPoints = dom.getElementsByTagName('gx:coord')
+		trackPoints = [ x.firstChild.data.split() for x in trackPoints ]
+		self.points = map( lambda x: [float(x[1]), float(x[0])], trackPoints)
+		self.computeBounds()
+
 if __name__ == "__main__":
 
 	# Now support CLI arguments!
@@ -320,7 +334,7 @@ if __name__ == "__main__":
 			action="store_true", dest="verbose", default=False,
 			help="output progress messages to stdout")
 	parser.add_option("-o", "--output",
-			action="store", dest="filename", default='',
+			action="store", dest="filename", default='output.png',
 			help="filename to write the track image to")
 	parser.add_option("-b", "--background",
 			action="store_false", dest="background", default=True,
@@ -333,7 +347,20 @@ if __name__ == "__main__":
 		parser.print_help()
 		sys.exit(-1)
 
-	track = GPX()
+	trackFile, trackType = os.path.splitext(args[0])
+	# since OS do not love mime types :'( we do the stupid thing, test on extension!!!
+	if trackType == '.gpx':
+		if verbose:
+			print 'Selected GPX parser'
+		track = GPX()
+	elif trackType == '.kml':
+		if verbose:
+			print 'Selected KML parser'
+		track = KML()
+	else:
+		print 'Invalid filetype provided'
+		sys.exit(-1)
+
 	track.setOptions( options.__dict__ )
 	# TODO Support more than one file in the same image
 	track.loadFromFile( args[0] )
