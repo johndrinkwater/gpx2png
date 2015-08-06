@@ -150,6 +150,7 @@ class GPX:
 		'size': 2, # Max tile w×h for output image
 		'border': 20, # TODO distance from edge of image to nearest path?
 		'background': True, # Use OSM tiles to flesh the background out
+		'antialiased': True,
 		'linecolour': 'black',
 		'linewidth': 1,
 		'filename': 'output.png', # Default output filename if not provided
@@ -251,8 +252,19 @@ class GPX:
 		pointlist = map( lambda x: Tile.getPixelForCoord(x, self.tilesbounds, imagesize), self.points)
 
 		# TODO give user option to style
-		draw = ImageDraw.Draw(image)
-		draw.line(pointlist, fill=self.options.get('linecolour'), width=self.options.get('linewidth'))
+
+		# XXX Supersample our line to make it smarter
+		if self.options.get('antialiased'):
+			newsize = (imagesize[0]*4, imagesize[1]*4)
+			background = image.resize( newsize )
+			draw = ImageDraw.ImageDraw(background)
+			pointlist = map( lambda x: Tile.getPixelForCoord(x, self.tilesbounds, newsize), self.points)
+			draw.line(pointlist, fill=self.options.get('linecolour'), width=self.options.get('linewidth')*4)
+			image = background.resize( imagesize, Image.ANTIALIAS )
+		else:
+			draw = ImageDraw.Draw(image)
+			pointlist = map( lambda x: Tile.getPixelForCoord(x, self.tilesbounds, imagesize), self.points)
+			draw.line(pointlist, fill=self.options.get('linecolour'), width=self.options.get('linewidth'))
 
 		# Attempt to intelligently trim the image if its over
 		# TODO give user a gutter option
