@@ -226,7 +226,7 @@ class GPX:
 
 		self.tilesbounds[0] = Tile.getCoords( self.tiles['x']['min'], self.tiles['y']['min'], self.tiles['zoom'] )
 		# because tile coords are from top left
-		self.tilesbounds[1] = Tile.getCoords( self.tiles['x']['max']+1, self.tiles['y']['max']+1, self.tiles['zoom'] )		
+		self.tilesbounds[1] = Tile.getCoords( self.tiles['x']['max']+1, self.tiles['y']['max']+1, self.tiles['zoom'] )
 		self.tilesbounds[2] = (	self.tilesbounds[0][0] - self.tilesbounds[1][0],
 							self.tilesbounds[0][1] - self.tilesbounds[1][1] )
 
@@ -310,7 +310,7 @@ class GPX:
 			image.paste(osmlogo, osmlocation, osmlogo)
 
 
-		# write file 
+		# write file
 		image.save(filename, "PNG")
 
 if __name__ == "__main__":
@@ -318,21 +318,21 @@ if __name__ == "__main__":
 	# Now support CLI arguments!
 	parser = OptionParser(usage="usage: gpx2png.py [options] file.gpx")
 	parser.add_option("-v", "--verbose",
-					  action="store_true", dest="verbose", default=False,
-					  help="output progress messages to stdout")
+			action="store_true", dest="verbose", default=False,
+			help="output progress messages to stdout")
 	parser.add_option("-o", "--output",
-					  action="store", dest="filename", default='',
-					  help="filename to write the track image to")
+			action="store", dest="filename", default='',
+			help="filename to write the track image to")
 	parser.add_option("-b", "--background",
-					  action="store_false", dest="background", default=True,
-					  help="disable output of OSM tile background")
+			action="store_false", dest="background", default=True,
+			help="disable output of OSM tile background")
 
 	(options, args) = parser.parse_args()
 	verbose = options.verbose
 
 	track = GPX()
 	track.setOptions( options.__dict__ )
-	# TODO Support more than one file in the same image 
+	# TODO Support more than one file in the same image
 	track.loadFromFile( args[0] )
 	track.drawTrack()
 
