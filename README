@@ -1,0 +1,6 @@
+A small tool to produce images of your GPS track breadcrumbs over the top of
+OSM mapping tile data
+
+TODO: this was made before the OSM move to a new licence, and needs further
+work to support extra file types - as it appears the kml output from Tracks on
+Android is not compatible with gpsbabel.
