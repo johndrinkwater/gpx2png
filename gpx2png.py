@@ -22,7 +22,8 @@
 import Image, ImageDraw
 import math, os, sys
 import urllib
-from xml.dom.minidom import parse
+import zipfile
+from xml.dom.minidom import parse, parseString
 from optparse import OptionParser
 
 # defaults
@@ -326,6 +327,23 @@ class KML(GPX):
 		self.points = map( lambda x: [float(x[1]), float(x[0])], trackPoints)
 		self.computeBounds()
 
+class KMZ(KML):
+
+	def loadFromFile( self, file ):
+		global verbose
+		if verbose:
+			print 'KMX.loadFromFile(', file, ')'
+
+		if not zipfile.is_zipfile( file ):
+			print 'File is not a valid ZIP'
+			sys.exit(-1)
+
+		with zipfile.ZipFile( file, 'r' ) as kml:
+			file_contents = kml.read( 'doc.kml' )
+
+		dom = parseString(file_contents)
+		self.load(dom)
+
 if __name__ == "__main__":
 
 	# Now support CLI arguments!
@@ -357,6 +375,10 @@ if __name__ == "__main__":
 		if verbose:
 			print 'Selected KML parser'
 		track = KML()
+	elif trackType == '.kmz':
+		if verbose:
+			print 'Selected KMZ parser'
+		track = KMZ()
 	else:
 		print 'Invalid filetype provided'
 		sys.exit(-1)
