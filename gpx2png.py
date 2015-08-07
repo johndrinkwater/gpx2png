@@ -153,7 +153,7 @@ class GPX:
 		'antialiased': True,
 		'linecolour': 'black',
 		'linewidth': 1,
-		'filename': 'output.png', # Default output filename if not provided
+		'filename': '', # Default output filename if not provided
 		'renderer': 'mapnik', # OSM server to use
 		'cache': 'cache', # Default cache location
 		'notice': 'normal'
@@ -193,15 +193,16 @@ class GPX:
 	def loadFromFile( self, file ):
 		global verbose
 		if verbose:
-			print 'GPX.loadFromFile(', file, ')'
+			print 'loadFromFile(', file, ')'
 
+		self.trackname = file
 		dom = parse(file)
 		self.load(dom)
 
 	def loadFromString( self, string ):
 		global verbose
 		if verbose:
-			print 'GPX.loadFromString()'
+			print 'loadFromString()'
 
 		dom = parseString(string)
 		self.load(dom)
@@ -238,6 +239,10 @@ class GPX:
 
 		if filename == '' or filename == None:
 			filename = self.options.get('filename')
+
+		if filename == '' or filename == None:
+			trackFile, trackType = os.path.splitext( self.trackname )
+			filename = trackFile + '.png'
 
 		imagesize = ( self.tiles['x']['count'] * 256, self.tiles['y']['count'] * 256 )
 		image = Image.new("RGB", imagesize, '#ffffff')
@@ -350,34 +355,17 @@ class KMZ(KML):
 			print 'File is not a valid ZIP'
 			sys.exit(-1)
 
+		self.trackname = file
+
 		with zipfile.ZipFile( file, 'r' ) as kml:
 			file_contents = kml.read( 'doc.kml' )
 
 		dom = parseString(file_contents)
 		self.load(dom)
 
-if __name__ == "__main__":
+def loadFromFile( trackpath ):
 
-	# Now support CLI arguments!
-	parser = OptionParser(usage="usage: gpx2png.py [options] file.gpx")
-	parser.add_option("-v", "--verbose",
-			action="store_true", dest="verbose", default=False,
-			help="output progress messages to stdout")
-	parser.add_option("-o", "--output",
-			action="store", dest="filename", default='output.png',
-			help="filename to write the track image to")
-	parser.add_option("-b", "--background",
-			action="store_false", dest="background", default=True,
-			help="disable output of OSM tile background")
-
-	(options, args) = parser.parse_args()
-	verbose = options.verbose
-
-	if len(args) == 0:
-		parser.print_help()
-		sys.exit(-1)
-
-	trackFile, trackType = os.path.splitext(args[0])
+	trackFile, trackType = os.path.splitext( trackpath )
 	# since OS do not love mime types :'( we do the stupid thing, test on extension!!!
 	if trackType == '.gpx':
 		if verbose:
@@ -392,11 +380,43 @@ if __name__ == "__main__":
 			print 'Selected KMZ parser'
 		track = KMZ()
 	else:
-		print 'Invalid filetype provided'
+		print 'Invalid filetype provided: ', track
 		sys.exit(-1)
 
-	track.setOptions( options.__dict__ )
-	# TODO Support more than one file in the same image
-	track.loadFromFile( args[0] )
-	track.drawTrack()
+	track.loadFromFile( trackpath )
+	return track
+
+if __name__ == "__main__":
+
+	# Now support CLI arguments!
+	parser = OptionParser(usage="usage: gpx2png.py [options] file.gpx")
+	parser.add_option("-v", "--verbose",
+			action="store_true", dest="verbose", default=False,
+			help="output progress messages to stdout")
+	parser.add_option("-o", "--output",
+			action="store", dest="filename", default='',
+			help="filename to write the track image to")
+	parser.add_option("-b", "--background",
+			action="store_false", dest="background", default=True,
+			help="disable output of OSM tile background")
+
+	(options, args) = parser.parse_args()
+	verbose = options.verbose
+
+	if len(args) == 0:
+		parser.print_help()
+		sys.exit(-1)
+
+	if len(args) == 1:
+		track = loadFromFile( args[0] )
+		track.setOptions( options.__dict__ )
+		track.drawTrack()
+	else:
+		# TODO Support more than one file in the same image
+		for path in args:
+			track = loadFromFile( path )
+			track.setOptions( options.__dict__ )
+			# atm, with multiple, we just let each one output once
+			track.drawTrack()
+
 
